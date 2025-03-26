@@ -1,41 +1,51 @@
 import React from "react";
 import axios from "axios";
-import { CircularProgress, Box, Typography, Paper, Grid } from "@mui/material";
+import { 
+  CircularProgress, 
+  Box, 
+  Typography, 
+  Paper, 
+  Grid,
+  Stack,
+  IconButton 
+} from "@mui/material";
+import { 
+  NavigateNext as NavigateNextIcon,
+  NavigateBefore as NavigateBeforeIcon 
+} from '@mui/icons-material';
+import { VehicleType } from "./types/vehiclesType";
 
 interface Props {
   params: number | null;
 }
 
 export const ResultData = ({ params }: Props) => {
-  const [data, setData] = React.useState<any>(null);
+  const [data, setData] = React.useState<VehicleType[]>([]);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const [currentPage, setCurrentPage] = React.useState(0);
 
   React.useEffect(() => {
     const fetchData = async () => {
-      // Only fetch if params is provided
-      if (!params) {
-        setData(null);
-        return;
-      }
-
       setLoading(true);
-      setError(null);
-      
       try {
-        const urlAPI = `http://localhost:5277/api/vehicles/${params}`;
+        const urlAPI = params 
+          ? `http://localhost:5277/api/vehicles/${params}`
+          : `http://localhost:5277/api/vehicles`;
         const response = await axios.get(urlAPI);
-        setData(response.data);
+        console.log(response.data);
+        setData(Array.isArray(response.data) ? response.data : [response.data]);
       } catch (error) {
         console.error('Error fetching data:', error);
         setError("Failed to fetch vehicle data. Please try again.");
-        setData(null);
+        setData([]);
       } finally {
         setLoading(false);
       }
     };
 
     fetchData();
+    setCurrentPage(0);
   }, [params]);
 
   if (loading) {
@@ -54,21 +64,15 @@ export const ResultData = ({ params }: Props) => {
     );
   }
 
-  if (!params) {
+  if (!data || data.length === 0) {
     return (
       <Box p={2}>
-        <Typography>Enter a contract ID and click "Get Data" to view details.</Typography>
+        <Typography>No data found{params ? ` for contract ID: ${params}` : ''}</Typography>
       </Box>
     );
   }
 
-  if (!data) {
-    return (
-      <Box p={2}>
-        <Typography>No data found for contract ID: {params}</Typography>
-      </Box>
-    );
-  }
+  const currentVehicle = data[currentPage];
 
   return (
     <Paper elevation={0}>
@@ -76,62 +80,92 @@ export const ResultData = ({ params }: Props) => {
         <Typography variant="h6" gutterBottom>
           Vehicle Details
         </Typography>
-        
+
         <Grid container spacing={2}>
           <Grid item xs={12} sm={6}>
             <Typography variant="subtitle2">ID</Typography>
-            <Typography>{data.id}</Typography>
+            <Typography>{currentVehicle.id}</Typography>
           </Grid>
-          
+
           <Grid item xs={12} sm={6}>
             <Typography variant="subtitle2">License Plate</Typography>
-            <Typography>{data.licensePlate}</Typography>
+            <Typography>{currentVehicle.licensePlate}</Typography>
           </Grid>
-          
+
           <Grid item xs={12} sm={6}>
             <Typography variant="subtitle2">Brand</Typography>
-            <Typography>{data.brand}</Typography>
+            <Typography>{currentVehicle.brand}</Typography>
           </Grid>
-          
+
           <Grid item xs={12} sm={6}>
             <Typography variant="subtitle2">Model</Typography>
-            <Typography>{data.model}</Typography>
+            <Typography>{currentVehicle.model}</Typography>
           </Grid>
         </Grid>
 
-        {data.rentalContract && (
+        {currentVehicle.rentalContract && (
           <>
             <Typography variant="h6" gutterBottom sx={{ mt: 3 }}>
               Rental Contract Details
             </Typography>
-            
+
             <Grid container spacing={2}>
               <Grid item xs={12} sm={6}>
                 <Typography variant="subtitle2">Contract ID</Typography>
-                <Typography>{data.rentalContract.id}</Typography>
+                <Typography>{currentVehicle.rentalContract.id}</Typography>
               </Grid>
-              
+
               <Grid item xs={12} sm={6}>
                 <Typography variant="subtitle2">Customer Name</Typography>
-                <Typography>{data.rentalContract.customerName}</Typography>
+                <Typography>{currentVehicle.rentalContract.customerName}</Typography>
               </Grid>
-              
+
               <Grid item xs={12} sm={6}>
                 <Typography variant="subtitle2">Start Date</Typography>
                 <Typography>
-                  {new Date(data.rentalContract.startDate).toLocaleDateString()}
+                  {currentVehicle.rentalContract.startDate 
+                    ? new Date(currentVehicle.rentalContract.startDate).toLocaleDateString() 
+                    : "N/A"}
                 </Typography>
               </Grid>
-              
+
               <Grid item xs={12} sm={6}>
                 <Typography variant="subtitle2">End Date</Typography>
                 <Typography>
-                  {new Date(data.rentalContract.endDate).toLocaleDateString()}
+                  {currentVehicle.rentalContract.endDate 
+                    ? new Date(currentVehicle.rentalContract.endDate).toLocaleDateString() 
+                    : "N/A"}
                 </Typography>
               </Grid>
             </Grid>
           </>
         )}
+
+        <Stack
+          direction="row"
+          spacing={2}
+          justifyContent="center"
+          alignItems="center"
+          mt={3}
+        >
+          <IconButton
+            onClick={() => setCurrentPage(prev => prev - 1)}
+            disabled={currentPage === 0}
+          >
+            <NavigateBeforeIcon />
+          </IconButton>
+
+          <Typography>
+            Page {currentPage + 1} of {data.length}
+          </Typography>
+
+          <IconButton
+            onClick={() => setCurrentPage(prev => prev + 1)}
+            disabled={currentPage === data.length - 1}
+          >
+            <NavigateNextIcon />
+          </IconButton>
+        </Stack>
       </Box>
     </Paper>
   );
